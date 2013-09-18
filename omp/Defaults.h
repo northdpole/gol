@@ -68,5 +68,9 @@ const int LOWER_THRESH = 2;
 // Cells with exactly SPAWN_THRESH neighbors become ALIVE
 const int SPAWN_THRESH = 3;
 
-const int MPI_DIMS = 2;
+const int MY_MPI_DIMS = 2;
+
+const int FROM_MPI = 123;
+const int MY_MPI_ROOT_PROC = 0;
+
 #endif

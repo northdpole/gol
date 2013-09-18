@@ -23,14 +23,14 @@ void        cleanup (struct data * vars);
 void        parse_args (struct data * vars, int argc, char ** argv);
 void        help ();
 void get_surrounding_ranks(struct data * vars);
-
+int terminate(struct data *vars);
 
 int main(int argc, char ** argv) {
 
 	int generations;
-	int threshold = 0;
+//	int threshold = 0;
 	struct data vars;
-
+//	int i;
 
 	initialize(&vars, &argc, &argv);
 
@@ -39,21 +39,60 @@ int main(int argc, char ** argv) {
 		send_receive(&vars);
 
 		eval_grid(&vars);
-		if(vars.changes != 0)
-			threshold++;
-		vars.changes = 0;
-		/*
-		 * TODO: BROADCAST NO CHANGES AND WAIT FOR RESPONSE IF ALL RESPONSES ARE NO CHANGES TERMINATE
-		 * */
 		copy_grid(&vars);
-	    MPI_Barrier(vars.my_comm);
+	    int foo = terminate(&vars);
+	    if(foo){
+			break;
+		}
+		MPI_Barrier(vars.my_comm);
 	}
+	//vars.changes = generations;
 	cleanup(&vars);
 	exit(EXIT_SUCCESS);
 }
 
+int terminate(struct data *vars){
+	int i,error;
+	int terminate = 0;
+//	int msg_exists = 0;
+	int ter_count = 0;
 
-
+	if(vars->changes != 0 && vars->my_rank == MY_MPI_ROOT_PROC){//if there were changes and you are root 
+		//then just discard all inbox
+			for( i =1; i < vars->mpi_size; i++){
+					error =  MPI_Recv(&error, 1, MPI_INT, i, FROM_MPI,
+										vars->my_comm, MPI_STATUS_IGNORE);
+					error =  MPI_Send(&terminate, 1, MPI_INT, i, FROM_MPI,vars->my_comm);
+			}
+	}else if(vars->my_rank != MY_MPI_ROOT_PROC){
+		if(vars->changes != 0)
+			terminate = 0;
+		else
+			terminate = 1;
+		error = MPI_Send(&terminate, 1, MPI_INT, MY_MPI_ROOT_PROC, FROM_MPI, vars->my_comm);
+	
+		error =  MPI_Recv(&terminate, 1, MPI_INT, MY_MPI_ROOT_PROC, FROM_MPI, vars->my_comm, MPI_STATUS_IGNORE);
+	
+	}else if(vars->changes == 0 && vars->my_rank == MY_MPI_ROOT_PROC){ //if no changes
+		ter_count = 1;
+		for( i =1; i < vars->mpi_size; i++){
+			terminate = 0;
+			error =  MPI_Recv(&terminate, 1, MPI_INT, i, FROM_MPI, vars->my_comm, MPI_STATUS_IGNORE);
+			if(terminate)
+				ter_count++;
+		}
+		if( ter_count == vars->mpi_size){// if everyone sent no changes then 
+			terminate = 1;
+		}else{
+			terminate = 0;
+		}
+		for( i =1; i < vars->mpi_size; i++){
+			error =  MPI_Send(&terminate, 1, MPI_INT, i, FROM_MPI,vars->my_comm);
+		}
+	}
+	vars->changes = 0;
+	return terminate;
+}
 /*
 	initialize()
 		Initialize runtime environment and initializes MPI.
@@ -90,7 +129,7 @@ int initialize (struct data * vars, int * c, char *** v) {
 		return -1;
 	}
 	int size = vars->mpi_grid_size = sqrt(vars->mpi_size);
-	int ndims = MPI_DIMS;				/* 2D matrix */
+	int ndims = MY_MPI_DIMS;				/* 2D matrix */
 	dim_size[0] = size;					/* N rows */
 	dim_size[1] = size;					/* N columns */
 	periods[0] = 1;						/* row periodic */
@@ -133,7 +172,7 @@ void get_surrounding_ranks(struct data * vars){
 	if( error != 0)
 		fprintf(stderr,"Error in MPI_Cart_shift\n");
 	/*top - right*/
-	error = MPI_Cart_coords(my_comm, top , MPI_DIMS, coords);
+	error = MPI_Cart_coords(my_comm, top , MY_MPI_DIMS, coords);
 	if(coords[1] == vars->mpi_grid_size - 1)
 		coords[1] = 0;
 	else
@@ -141,7 +180,7 @@ void get_surrounding_ranks(struct data * vars){
 	error = MPI_Cart_rank( my_comm, coords, &t_right );
 	
 	/* top - left*/
-	error = MPI_Cart_coords(my_comm, top , MPI_DIMS, coords);
+	error = MPI_Cart_coords(my_comm, top , MY_MPI_DIMS, coords);
 	if(coords[1] == 0)
 		coords[1] = vars->mpi_grid_size - 1;
 	else
@@ -149,7 +188,7 @@ void get_surrounding_ranks(struct data * vars){
 	error = MPI_Cart_rank( my_comm, coords, &t_left );
 	
 	/*bottom -left*/
-	error = MPI_Cart_coords(my_comm, bottom , MPI_DIMS, coords);
+	error = MPI_Cart_coords(my_comm, bottom , MY_MPI_DIMS, coords);
 	if(coords[1] == 0)
 		coords[1] = vars->mpi_grid_size - 1;
 	else
@@ -157,7 +196,7 @@ void get_surrounding_ranks(struct data * vars){
 	error = MPI_Cart_rank( my_comm, coords, &b_left );
 	
 	/* bottom - right*/
-	error = MPI_Cart_coords(my_comm, bottom , MPI_DIMS, coords);
+	error = MPI_Cart_coords(my_comm, bottom , MY_MPI_DIMS, coords);
 	if(coords[1] == vars->mpi_grid_size - 1)
 		coords[1] = 0;
 	else
@@ -179,7 +218,7 @@ void get_surrounding_ranks(struct data * vars){
 
 	if(vars->my_rank == 30){
 		int my_coords[2];
-		error = MPI_Cart_coords(my_comm, vars->my_rank , MPI_DIMS, my_coords);
+		error = MPI_Cart_coords(my_comm, vars->my_rank , MY_MPI_DIMS, my_coords);
 		printf("err = %d  mpi_size = %d X: %d, Y: %d , rank = %d my bottom = %d, i'm %d my coords are X = %d Y = %d\n",
 		error, vars->mpi_size, coords[0],coords[1], b_right, bottom ,vars->my_rank, my_coords[0], my_coords[1]);
 	//MPI_Cart_rank( my_comm, coords, ranks[1] );
@@ -198,6 +237,7 @@ void eval_grid (struct data * vars) {
 
 	int ** grid      = vars->c_grid;
 	int ** f_grid = vars->f_grid;
+	vars->changes = 0;
 
 	for (i = 1; i <= colno; i++) {
 		for (j = 1; j <= colno; j++) {
@@ -527,12 +567,15 @@ void write_alive_cells(struct data * vars) {
 		for (i = 1; i <= rowno; i++) {
 			for (j = 1; j <= colno; j++) {
 				if (grid[i][j] != DEAD)
-					fprintf(fd, "%d %d\n", i, j);
+					fprintf(fd, "Process %d-> %d %d\n",vars->my_rank, i, j);
 			}
 		}
 
 		fclose(fd);
 	}
+	char str[5];
+	sprintf(str, "rank: %d", vars->my_rank);
+	print_grid(vars,str);
 }
 
 void free_grids (struct data * vars) {
