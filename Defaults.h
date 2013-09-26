@@ -7,13 +7,14 @@
 #include <mpi.h>
 #include <math.h>
 
-static const char * opts = "c:r:g:i:o:t::xh?";
+static const char * opts = "c:r:g:i:o:t:p::xh?";
 static const struct option long_opts[] = {
 	{ "columns", required_argument, NULL, 'c' },
 	{ "rows", required_argument, NULL, 'r' },
 	{ "gens", required_argument, NULL, 'g' },
 	{ "output", required_argument, NULL, 'o' },
 	{ "input", required_argument, NULL, 'i' },
+	{ "print", optional_argument, NULL, 'p' },
 	{ "throttle", optional_argument, NULL, 't' },
 	{ "help", no_argument, NULL, 'h' },
 	{ NULL, no_argument, NULL, 0 }
@@ -53,6 +54,7 @@ struct data {
 	int b_right;
 
 	int changes;
+	int print;
 };
 
 enum CELL_STATES {

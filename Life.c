@@ -31,7 +31,7 @@ int main(int argc, char ** argv) {
 //	int threshold = 0;
 	struct data vars;
 //	int i;
-
+	vars.print = 0;
 	initialize(&vars, &argc, &argv);
 
 	for (generations = 0; generations < vars.generations; generations++) {
@@ -573,9 +573,11 @@ void write_alive_cells(struct data * vars) {
 
 		fclose(fd);
 	}
-	char str[5];
-	sprintf(str, "rank: %d", vars->my_rank);
-	print_grid(vars,str);
+	if(vars->print == 1){
+		char str[5];
+		sprintf(str, "rank: %d", vars->my_rank);
+		print_grid(vars,str);
+	}
 }
 
 void free_grids (struct data * vars) {
@@ -630,6 +632,7 @@ void help () {
 	printf("  -g   Number of generations to run. Default: %d\n", DEFAULT_GENS);
 	printf("  -i   Input file. See README for format. Default: none.\n");
 	printf("  -o   Output file. Default: none.\n");
+	printf("  -p   Print result of each process to stdout. Default: none.\n");
 	printf("  -h   This help page.\n");
 	printf("\nSee README for more information.\n\n");
 
@@ -666,7 +669,9 @@ void parse_args (struct data * vars, int argc, char ** argv) {
 			case '?':
 				help();
 				break;
-
+			case 'p':
+				vars->print = 1;
+				break;
 			default:
 				break;
 		}
