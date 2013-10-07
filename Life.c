@@ -26,7 +26,7 @@ void get_surrounding_ranks(struct data * vars);
 int terminate(struct data *vars);
 
 int main(int argc, char ** argv) {
-//printf("\n\\n\nMpi_init \n");
+
 	int generations;
 	int foo = 0;
 //	int threshold = 0;
@@ -298,20 +298,20 @@ int i,j;
 		Top and bottom are copied from the process's own grid.
 */
 void send_receive (struct data * vars) {
-	int i,j;
+	int i;//,j;
 
 	int error;
 	//int my_rank  = vars->my_rank;
 	int mpi_size  = vars->mpi_size;
 	int colno = vars->colno;
-	int rowno = vars->rowno;
+//	int rowno = vars->rowno;
 	MPI_Comm my_comm = vars->my_comm;
 	int ** grid = vars->c_grid;
 	int *l_send_tmp = (int*)vars->l_send_tmp;
 	int *l_rcv_tmp = (int*)vars->l_rcv_tmp;
 	int *r_send_tmp = (int*)vars->r_send_tmp;
 	int *r_rcv_tmp = (int*)vars->r_rcv_tmp;
-	MPI_Status status;
+//	MPI_Status status;
 	MPI_Request requests[9];
 	int reqs = 0;
 	/*
